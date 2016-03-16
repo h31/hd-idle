@@ -1,3 +1,8 @@
+hd-idle utility, modified to use hdparm tool to spin down disks
+This allows hd-idle to work properly with external HDD enclosures based on Norelsys NS1066/NS1066X chip (for example, Orico 2588US3).
+Based on version 1.05
+Original URL: https://sourceforge.net/projects/hd-idle/
+
 Hard Disk Idle Spin-Down Utility
 ==============================================================================
 
