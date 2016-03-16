@@ -131,6 +131,7 @@
 
 #define STAT_FILE "/proc/diskstats"
 #define DEFAULT_IDLE_TIME 600
+#define HDPARM_CMD "hdparm"
 
 #define dprintf if (debug) printf
 
@@ -399,47 +400,19 @@ static DISKSTATS *get_diskstats(const char *name)
 /* spin-down a disk */
 static void spindown_disk(const char *name)
 {
-  struct sg_io_hdr io_hdr;
-  unsigned char sense_buf[255];
   char dev_name[100];
+  char exec_command[255];
   int fd;
 
   dprintf("spindown: %s\n", name);
 
-  /* fabricate SCSI IO request */
-  memset(&io_hdr, 0x00, sizeof(io_hdr));
-  io_hdr.interface_id = 'S';
-  io_hdr.dxfer_direction = SG_DXFER_NONE;
-
-  /* SCSI stop unit command */
-  io_hdr.cmdp = (unsigned char *) "\x1b\x00\x00\x00\x00\x00";
-
-  io_hdr.cmd_len = 6;
-  io_hdr.sbp = sense_buf;
-  io_hdr.mx_sb_len = (unsigned char) sizeof(sense_buf);
-
-  /* open disk device (kernel 2.4 will probably need "sg" names here) */
+  /* disk device name (kernel 2.4 will probably need "sg" names here) */
   snprintf(dev_name, sizeof(dev_name), "/dev/%s", name);
-  if ((fd = open(dev_name, O_RDONLY)) < 0) {
-    perror(dev_name);
-    return;
-  }
 
-  /* execute SCSI request */
-  if (ioctl(fd, SG_IO, &io_hdr) < 0) {
-    char buf[100];
-    snprintf(buf, sizeof(buf), "ioctl on %s:", name);
-    perror(buf);
+  snprintf(exec_command, sizeof(exec_command), "%s -y /dev/%s", HDPARM_CMD, name);
+  dprintf("Issuing command: %s\n", exec_command);
 
-  } else if (io_hdr.masked_status != 0) {
-    fprintf(stderr, "error: SCSI command failed with status 0x%02x\n",
-            io_hdr.masked_status);
-    if (io_hdr.masked_status == CHECK_CONDITION) {
-      phex(sense_buf, io_hdr.sb_len_wr, "sense buffer:\n");
-    }
-  }
-
-  close(fd);
+  system(exec_command);
 }
 
 /* write a spin-up event message to the log file */
@@ -533,43 +506,5 @@ static char *disk_name(char *path)
     printf("using %s for %s\n", s, path);
   }
   return(s);
-}
-
-/* print hex dump to stderr (e.g. sense buffers) */
-static void phex(const void *p, int len, const char *fmt, ...)
-{
-  va_list va;
-  const unsigned char *buf = p;
-  int pos = 0;
-  int i;
-
-  /* print header */
-  va_start(va, fmt);
-  vfprintf(stderr, fmt, va);
-
-  /* print hex block */
-  while (len > 0) {
-    fprintf(stderr, "%08x ", pos);
-
-    /* print hex block */
-    for (i = 0; i < 16; i++) {
-      if (i < len) {
-        fprintf(stderr, "%c%02x", ((i == 8) ? '-' : ' '), buf[i]);
-      } else {
-        fprintf(stderr, "   ");
-      }
-    }
-
-    /* print ASCII block */
-    fprintf(stderr, "   ");
-    for (i = 0; i < ((len > 16) ? 16 : len); i++) {
-      fprintf(stderr, "%c", (buf[i] >= 32 && buf[i] < 128) ? buf[i] : '.');
-    }
-    fprintf(stderr, "\n");
-
-    pos += 16;
-    buf += 16;
-    len -= 16;
-  }
 }
 
