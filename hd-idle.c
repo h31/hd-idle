@@ -160,8 +160,6 @@ static DISKSTATS  *get_diskstats   (const char *name);
 static void        spindown_disk   (const char *name);
 static void        log_spinup      (DISKSTATS *ds);
 static char       *disk_name       (char *name);
-static void        phex            (const void *p, int len,
-                                    const char *fmt, ...);
 
 /* global/static variables */
 IDLE_TIME *it_root;
@@ -402,7 +400,6 @@ static void spindown_disk(const char *name)
 {
   char dev_name[100];
   char exec_command[255];
-  int fd;
 
   dprintf("spindown: %s\n", name);
 
